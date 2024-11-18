@@ -11,7 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/dnsx v1.2.1
 	github.com/projectdiscovery/fdmax v0.0.4
-	github.com/projectdiscovery/goflags v0.1.64
+	github.com/projectdiscovery/goflags v0.1.65
 	github.com/projectdiscovery/gologger v1.1.31
 	github.com/projectdiscovery/ratelimit v0.0.61
 	github.com/projectdiscovery/utils v0.2.18
