@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="https://user-images.githubusercontent.com/8293321/174841003-01a62bad-2ecf-4874-89c4-efa53dd56884.png" width="200px">
+TLDFinder
 <br>
 </h1>
 
@@ -26,11 +26,10 @@ A streamlined tool for discovering TLDs, associated domains, and related domain 
 
 # Features
 
-![image](https://github.com/user-attachments/assets/d9548c6c-7a99-4ba9-8b08-ad716712c645)
+![image](https://github.com/user-attachments/assets/f9c96de5-9a14-4861-a85a-21df8c848e76)
 
- - TLD based passive DNS lookups
- - Reverse domain lookup (Passive)
- - Active TLD Finder
+ - TLD based DNS lookups (Passive)
+ - TLD based DNS lookups (Active)
  - STD **IN/OUT** and **TXT/JSON** output
 
 
@@ -51,8 +50,6 @@ tldfinder -h
 This will display help for the tool. Here are all the switches it supports.
 
 ```console
-tldfinder is a tls data gathering and analysis toolkit.
-
 A streamlined tool for discovering TLDs, associated subdomains, and related domain names.
 
 Usage:
@@ -112,21 +109,21 @@ OPTIMIZATION:
 
 ## Running tldfinder
 
-### Input for tldfinder
+tldfinder is designed for security research purposes to discover private TLDs. It accepts a domain or private TLD as input.
 
-**tldfinder** requires **domain** or tld as input for any discovery mode.
+- TLD Input: example (private TLD)
+- Domain Input: example.google (private TLD auto-extracted)
 
-```bash
-io # TLD input
-google.io # Domain input (tld will be auto extracted from domain name)
-```
+Use `-domain` or `-d` to specify input, and provide multiple values as comma-separated input.
 
-Input can be provided using `-domain / -d` flag, and multiple values can be provided using comma-separated input.
+> [!NOTE]
+> Only private TLDs are accepted, as tldfinder is meant for private TLD discovery.
 
-Example run:
+**Example run**:
 
 ```console
-$ tldfinder -d google.goog
+$ tldfinder -d google
+
  ________   ___  _____         __       
 /_  __/ /  / _ \/ __(_)__  ___/ /__ ____
  / / / /__/ // / _// / _ \/ _  / -_) __/
@@ -134,26 +131,30 @@ $ tldfinder -d google.goog
 
       projectdiscovery.io
 
-[INF] Enumerating sub(domains) for "goog" TLD
-simulations.endpoints.ingka-cff-simulations-prod.cloud.goog
-kf1.endpoints.x-delivery-benchmarking.cloud.goog
-banquedeprojets-mcinet-gov-ma.translate.goog
-www-pietervreedeplein-nl.translate.goog
-www.chwsimpreprod.goog
-kubeflow-ver1-2.endpoints.dbce-dswb-sbx-e07f.cloud.goog
-app2.r1.testacq.mesaintegrationtesting.off.goog
-rcs-nightly.staging.telephony.goog
-bookstore.endpoints.pergamon-test-apis.cloud.goog
-texaspokerfans.endpoints.diamondonline-dev.cloud.goog
-pinterest-com.translate.goog
-ext.audit.endpoints.mw-project-ext-179e.cloud.goog
-mas-provider-dev-co.endpoints.txd-mas-dev.cloud.goog
-ca8ru178nqhhk3h75qn0.us-central1.visionai.goog
-cbd0d2028lo7e2iocmdg.us-central1.visionai.goog
-1p-na-telecom.rcs.telephony.goog
-.....
-[INF] Found 3329 domains for goog in 10 seconds 458 milliseconds
+[INF] Current tldfinder version v0.0.2 (latest)
+[INF] Enumerating sub(domains) for "google" TLD
+ice.ext.google
+test.postini.corp.google
+m.gutsdev.corp.google
+orkut-impersonation.corp.google
+orkut-qa.corp.google
+sites-googlegroups-qa07.corp.google
+partners.cloudskillsboost.google
+support.registry-sandbox.google
+www.google
+docs.google
+plus.google
+cache7.c.docs.google
+smtp.google
+...
+[INF] Found 215 domains for google in 7 seconds 968 milliseconds
 ```
+
+## Reference
+
+- [Hacking Beyond.com — Enumerating Private TLDs
+](https://cloud.google.com/blog/topics/threat-intelligence/enumerating-private-tlds/)
+
 
 ## Acknowledgements
 
