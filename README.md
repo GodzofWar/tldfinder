@@ -21,8 +21,7 @@ TLDFinder
   <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 
-
-A streamlined tool for discovering TLDs, associated domains, and related domain names.
+A streamlined tool for discovering private TLDs for security research.
 
 # Features
 
@@ -50,7 +49,7 @@ tldfinder -h
 This will display help for the tool. Here are all the switches it supports.
 
 ```console
-A streamlined tool for discovering TLDs, associated subdomains, and related domain names.
+A streamlined tool for discovering private TLDs for security research.
 
 Usage:
   ./tldfinder [flags]

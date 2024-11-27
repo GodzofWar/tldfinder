@@ -83,7 +83,7 @@ func ParseOptions() *Options {
 
 	var err error
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`A streamlined tool for discovering TLDs, associated subdomains, and related domain names.`)
+	flagSet.SetDescription(`A streamlined tool for discovering private TLDs for security research.`)
 
 	flagSet.CreateGroup("input", "Input",
 		flagSet.StringSliceVarP(&options.Domain, "domain", "d", nil, "domain or list of domains for discovery (file or comma separated)", goflags.FileNormalizedStringSliceOptions),
