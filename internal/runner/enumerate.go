@@ -51,6 +51,7 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 	now := time.Now()
 	results := r.agent.EnumerateQueriesWithCtx(ctx, query, r.options.Proxy, r.options.RateLimit, r.options.Timeout, time.Duration(r.options.MaxEnumerationTime)*time.Minute, agent.WithCustomRateLimit(r.rateLimit))
 
+	outputWriter := NewOutputWriter(r.options.JSON)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	// Create a unique map for filtering duplicate domains out
@@ -82,7 +83,9 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 
 					// Log the verbose message about the found domain per source
 					if _, ok := sourceMap[domain][result.Source]; !ok {
-						gologger.Verbose().Label(result.Source).Msg(domain)
+						if r.options.Verbose {
+							gologger.Verbose().Label(result.Source).Msg(domain)
+						}
 					}
 
 					sourceMap[domain][result.Source] = struct{}{}
@@ -97,10 +100,27 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 
 					uniqueMap[domain] = hostEntry
 					// If the user asked to remove wildcard then send on the resolve
-					// queue. Otherwise, if mode is not verbose print the results on
-					// the screen as they are discovered.
+					// queue. Otherwise, output results immediately as they are discovered.
 					if r.options.RemoveWildcard {
 						resolutionPool.Tasks <- hostEntry
+					} else {
+						for _, writer := range writers {
+							var err error
+							if r.options.CaptureSources {
+								hostSourceMap := map[string]map[string]struct{}{domain: sourceMap[domain]}
+								err = outputWriter.WriteSourceHost(query, hostSourceMap, writer)
+							} else {
+								hostMap := map[string]resolve.HostEntry{domain: hostEntry}
+								err = outputWriter.WriteHost(query, hostMap, writer)
+							}
+							if err != nil {
+								gologger.Error().Msgf("Could not write result for %s: %s\n", domain, err)
+							}
+						}
+						// Call result callback if set
+						if r.options.ResultCallback != nil {
+							r.options.ResultCallback(&hostEntry)
+						}
 					}
 				}
 			}
@@ -113,7 +133,7 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 	}()
 
 	// If the user asked to remove wildcards, listen from the results
-	// queue and write to the map. At the end, print the found results to the screen
+	// queue and write results in real-time
 	foundResults := make(map[string]resolve.Result)
 	if r.options.RemoveWildcard {
 		// Process the results coming from the resolutions pool
@@ -122,36 +142,30 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 			case resolve.Error:
 				gologger.Warning().Msgf("Could not resolve host: %s\n", result.Error)
 			case resolve.Subdomain:
-				// Add the found domain to a map.
+				// Add the found domain to a map and output immediately
 				if _, ok := foundResults[result.Host]; !ok {
 					foundResults[result.Host] = result
+					for _, writer := range writers {
+						var err error
+						if r.options.HostIP {
+							resultMap := map[string]resolve.Result{result.Host: result}
+							err = outputWriter.WriteHostIP(query, resultMap, writer)
+						} else {
+							resultMap := map[string]resolve.Result{result.Host: result}
+							err = outputWriter.WriteHostNoWildcard(query, resultMap, writer)
+						}
+						if err != nil {
+							gologger.Error().Msgf("Could not write result for %s: %s\n", result.Host, err)
+						}
+					}
+					if r.options.ResultCallback != nil {
+						r.options.ResultCallback(&resolve.HostEntry{Query: query, Host: result.Host, Source: result.Source})
+					}
 				}
 			}
 		}
 	}
 	wg.Wait()
-	outputWriter := NewOutputWriter(r.options.JSON)
-	// Now output all results in output writers
-	var err error
-	for _, writer := range writers {
-		if r.options.HostIP {
-			err = outputWriter.WriteHostIP(query, foundResults, writer)
-		} else {
-			if r.options.RemoveWildcard {
-				err = outputWriter.WriteHostNoWildcard(query, foundResults, writer)
-			} else {
-				if r.options.CaptureSources {
-					err = outputWriter.WriteSourceHost(query, sourceMap, writer)
-				} else {
-					err = outputWriter.WriteHost(query, uniqueMap, writer)
-				}
-			}
-		}
-		if err != nil {
-			gologger.Error().Msgf("Could not write results for %s: %s\n", query, err)
-			return err
-		}
-	}
 
 	// Show found domain count in any case.
 	duration := durafmt.Parse(time.Since(now)).LimitFirstN(maxNumCount).String()
@@ -160,18 +174,6 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 		numberOfDomains = len(foundResults)
 	} else {
 		numberOfDomains = len(uniqueMap)
-	}
-
-	if r.options.ResultCallback != nil {
-		if r.options.RemoveWildcard {
-			for host, result := range foundResults {
-				r.options.ResultCallback(&resolve.HostEntry{Query: host, Host: result.Host, Source: result.Source})
-			}
-		} else {
-			for _, v := range uniqueMap {
-				r.options.ResultCallback(&v)
-			}
-		}
 	}
 	gologger.Info().Msgf("Found %d domains for %s in %s\n", numberOfDomains, query, duration)
 
