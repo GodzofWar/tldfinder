@@ -22,6 +22,7 @@ import (
 
 	"github.com/projectdiscovery/tldfinder/pkg/agent"
 	"github.com/projectdiscovery/tldfinder/pkg/resolve"
+	"github.com/projectdiscovery/tldfinder/pkg/source"
 	"github.com/projectdiscovery/tldfinder/pkg/utils"
 )
 
@@ -76,7 +77,12 @@ func NewRunner(options *Options) (*Runner, error) {
 }
 
 func (r *Runner) initializeAgent() {
-	r.agent = agent.New(r.options.Sources, r.options.ExcludeSources, r.options.All, r.options.DiscoveryMode)
+	if r.options.DiscoveryMode == source.FullMode {
+		// Full mode starts with TLD discovery; subdomain agent is created later
+		r.agent = agent.New(r.options.Sources, r.options.ExcludeSources, r.options.All, source.TLDMode)
+	} else {
+		r.agent = agent.New(r.options.Sources, r.options.ExcludeSources, r.options.All, r.options.DiscoveryMode)
+	}
 }
 
 func (r *Runner) initializeResolver() error {
@@ -166,7 +172,7 @@ func (r *Runner) EnumerateMultipleQueriesWithCtx(ctx context.Context, reader io.
 				return err
 			}
 
-			err = r.EnumerateSingleQueryWithCtx(ctx, domain, append(writers, file))
+			err = r.enumerateQuery(ctx, domain, append(writers, file))
 
 			file.Close()
 		} else if r.options.OutputDirectory != "" {
@@ -184,15 +190,23 @@ func (r *Runner) EnumerateMultipleQueriesWithCtx(ctx context.Context, reader io.
 				return err
 			}
 
-			err = r.EnumerateSingleQueryWithCtx(ctx, domain, append(writers, file))
+			err = r.enumerateQuery(ctx, domain, append(writers, file))
 
 			file.Close()
 		} else {
-			err = r.EnumerateSingleQueryWithCtx(ctx, domain, writers)
+			err = r.enumerateQuery(ctx, domain, writers)
 		}
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// enumerateQuery dispatches to the appropriate enumeration method based on mode
+func (r *Runner) enumerateQuery(ctx context.Context, query string, writers []io.Writer) error {
+	if r.options.DiscoveryMode == source.FullMode {
+		return r.EnumerateFullModeWithCtx(ctx, query, writers)
+	}
+	return r.EnumerateSingleQueryWithCtx(ctx, query, writers)
 }

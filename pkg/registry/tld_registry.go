@@ -13,9 +13,13 @@ var tldData string
 //go:embed private_tlds.txt
 var privateTldData string
 
+//go:embed subdomains.txt
+var subdomainData string
+
 var (
 	TLDs        = processTLDData(tldData)
 	PrivateTLDs = processTLDData(privateTldData)
+	Subdomains  = processTLDData(subdomainData)
 )
 
 func processTLDData(data string) []string {

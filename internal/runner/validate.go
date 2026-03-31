@@ -35,9 +35,12 @@ func (options *Options) validateOptions() error {
 		return errors.New("timeout cannot be zero")
 	}
 
-	// Always remove wildcard with hostip
+	// Always remove wildcard with hostip or ASN
 	if options.HostIP && !options.RemoveWildcard {
 		return errors.New("hostip flag must be used with RemoveWildcard option")
+	}
+	if options.IncludeASN && !options.RemoveWildcard {
+		return errors.New("asn flag must be used with RemoveWildcard option")
 	}
 
 	if options.Match != nil {

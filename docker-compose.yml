@@ -1,0 +1,23 @@
+services:
+  tldfinder:
+    build: .
+    container_name: tldfinder
+    volumes:
+      # Provider config with API keys
+      - ${PROVIDER_CONFIG:-./provider-config.yaml}:/root/.config/tldfinder/provider-config.yaml:ro
+      # Public DNS resolvers for host resolution
+      - ./resolvers.txt:/resolvers.txt:ro
+      # Output directory for results
+      - ./output:/output
+    # Examples:
+    #   TLD discovery with IP + ASN:
+    #   docker compose run --rm tldfinder -d google -dm tld -nW -oI -oA -rL /resolvers.txt -o /output/google-tlds.txt
+    #
+    #   Subdomain brute-force with IP + ASN:
+    #   docker compose run --rm tldfinder -d google.com -dm subdomain -nW -oI -oA -rL /resolvers.txt -o /output/google-subs.txt
+    #
+    #   Full pipeline (TLD discovery → subdomain brute-force on each):
+    #   docker compose run --rm tldfinder -d tesla -dm full -nW -oI -oA -rL /resolvers.txt -o /output/tesla-full.txt
+    #
+    #   JSON output:
+    #   docker compose run --rm tldfinder -d amazon -dm tld -nW -oI -oA -rL /resolvers.txt -oJ -o /output/amazon.json

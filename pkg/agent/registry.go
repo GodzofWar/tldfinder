@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/tldfinder/pkg/source/dnsrepo"
 	dnsxSrc "github.com/projectdiscovery/tldfinder/pkg/source/dnsx"
 	"github.com/projectdiscovery/tldfinder/pkg/source/netlas"
+	"github.com/projectdiscovery/tldfinder/pkg/source/subbrute"
 	"github.com/projectdiscovery/tldfinder/pkg/source/waybackarchive"
 	"github.com/projectdiscovery/tldfinder/pkg/source/whoisxmlapi"
 	"github.com/projectdiscovery/tldfinder/pkg/source/whoxy"
@@ -23,6 +24,7 @@ var AllSources = map[string]source.Source{
 	"whoisxmlapi":    &whoisxmlapi.Source{},
 	"crtsh":          &crtsh.Source{},
 	"dnsx":           &dnsxSrc.Source{},
+	"subbrute":       &subbrute.Source{},
 	"whoxy":          &whoxy.Source{},
 }
 

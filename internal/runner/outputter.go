@@ -27,6 +27,8 @@ type jsonSourceResult struct {
 type jsonSourceIPResult struct {
 	Host   string `json:"host"`
 	IP     string `json:"ip"`
+	ASN    string `json:"asn,omitempty"`
+	Org    string `json:"org,omitempty"`
 	Input  string `json:"input"`
 	Source string `json:"source"`
 }
@@ -91,6 +93,14 @@ func writePlainHostIP(_ string, results map[string]resolve.Result, writer io.Wri
 		sb.WriteString(result.Host)
 		sb.WriteString(",")
 		sb.WriteString(result.IP)
+		if result.ASN != "" {
+			sb.WriteString(",")
+			sb.WriteString(result.ASN)
+		}
+		if result.Org != "" {
+			sb.WriteString(",")
+			sb.WriteString(result.Org)
+		}
 		sb.WriteString(",")
 		sb.WriteString(result.Source)
 		sb.WriteString("\n")
@@ -113,6 +123,8 @@ func writeJSONHostIP(input string, results map[string]resolve.Result, writer io.
 	for _, result := range results {
 		data.Host = result.Host
 		data.IP = result.IP
+		data.ASN = result.ASN
+		data.Org = result.Org
 		data.Input = input
 		data.Source = result.Source
 

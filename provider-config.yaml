@@ -1,0 +1,17 @@
+bufferover: []
+# - your-bufferover-api-key
+
+censys: []
+# - token:secret
+
+dnsrepo: []
+# - your-dnsrepo-api-key
+
+netlas: []
+# - your-netlas-api-key
+
+whoisxmlapi: []
+# - your-whoisxmlapi-api-key
+
+whoxy: []
+# - your-whoxy-api-key

@@ -33,13 +33,17 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 		gologger.Info().Msgf("Enumerating TLDs for \"%s\"\n", query)
 	case source.DomainMode:
 		gologger.Info().Msgf("Enumerating related domains for \"%s\"\n", query)
+	case source.SubdomainMode:
+		gologger.Info().Msgf("Enumerating subdomains for \"%s\"\n", query)
+	case source.FullMode:
+		gologger.Info().Msgf("Running full enumeration for \"%s\"\n", query)
 	}
 
 	// Check if the user has asked to remove wildcards explicitly.
 	// If yes, create the resolution pool and get the wildcards for the current domain
 	var resolutionPool *resolve.ResolutionPool
 	if r.options.RemoveWildcard {
-		resolutionPool = r.resolverClient.NewResolutionPool(r.options.Threads, r.options.RemoveWildcard)
+		resolutionPool = r.resolverClient.NewResolutionPool(r.options.Threads, r.options.RemoveWildcard, r.options.IncludeASN)
 		err := resolutionPool.InitWildcards(query)
 		if err != nil {
 			// Log the error but don't quit.
@@ -66,7 +70,7 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 				gologger.Warning().Msgf("Could not run source %s: %s\n", result.Source, result.Error)
 			case source.Domain:
 				// Validate the domain found and remove wildcards from
-				if r.options.DiscoveryMode == source.DNSMode && !strings.HasSuffix(result.Value, "."+query) {
+				if (r.options.DiscoveryMode == source.DNSMode || r.options.DiscoveryMode == source.SubdomainMode) && !strings.HasSuffix(result.Value, "."+query) {
 					continue
 				}
 
@@ -181,6 +185,63 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 		gologger.Info().Msgf("Printing source statistics for %s", query)
 		printStatistics(r.agent.GetStatistics())
 	}
+
+	return nil
+}
+
+// EnumerateFullModeWithCtx runs TLD discovery first, then subdomain brute-force on each found TLD domain
+func (r *Runner) EnumerateFullModeWithCtx(ctx context.Context, query string, writers []io.Writer) error {
+	gologger.Info().Msgf("Phase 1: Enumerating TLDs for \"%s\"\n", query)
+
+	// Phase 1: TLD enumeration (agent is already initialized for TLDMode)
+	now := time.Now()
+	results := r.agent.EnumerateQueriesWithCtx(ctx, query, r.options.Proxy, r.options.RateLimit, r.options.Timeout, time.Duration(r.options.MaxEnumerationTime)*time.Minute, agent.WithCustomRateLimit(r.rateLimit))
+
+	// Collect all unique TLD domains
+	tldDomains := make(map[string]struct{})
+	for result := range results {
+		switch result.Type {
+		case source.Error:
+			gologger.Warning().Msgf("Could not run source %s: %s\n", result.Source, result.Error)
+		case source.Domain:
+			domain := strings.ReplaceAll(strings.ToLower(result.Value), "*.", "")
+			if matchDomain := r.filterAndMatchDomain(domain); matchDomain {
+				if _, ok := tldDomains[domain]; !ok {
+					tldDomains[domain] = struct{}{}
+					gologger.Info().Msgf("Found TLD: %s\n", domain)
+				}
+			}
+		}
+	}
+
+	duration := durafmt.Parse(time.Since(now)).LimitFirstN(maxNumCount).String()
+	gologger.Info().Msgf("Found %d TLD domains for %s in %s\n", len(tldDomains), query, duration)
+
+	if len(tldDomains) == 0 {
+		return nil
+	}
+
+	// Phase 2: Subdomain brute-force against each found TLD domain
+	gologger.Info().Msgf("Phase 2: Enumerating subdomains for %d discovered TLD domains\n", len(tldDomains))
+
+	// Create a subdomain agent
+	subAgent := agent.New(r.options.Sources, r.options.ExcludeSources, r.options.All, source.SubdomainMode)
+	origAgent := r.agent
+	r.agent = subAgent
+	// Temporarily switch mode for the enumeration logic
+	origMode := r.options.DiscoveryMode
+	r.options.DiscoveryMode = source.SubdomainMode
+
+	for domain := range tldDomains {
+		gologger.Info().Msgf("Enumerating subdomains for \"%s\"\n", domain)
+		if err := r.EnumerateSingleQueryWithCtx(ctx, domain, writers); err != nil {
+			gologger.Error().Msgf("Error enumerating subdomains for %s: %s\n", domain, err)
+		}
+	}
+
+	// Restore original agent and mode
+	r.agent = origAgent
+	r.options.DiscoveryMode = origMode
 
 	return nil
 }

@@ -39,10 +39,12 @@ const (
 	DNSMode DiscoveryMode = iota
 	TLDMode
 	DomainMode
+	SubdomainMode
+	FullMode
 )
 
 func (dm DiscoveryMode) String() string {
-	return [...]string{"dns", "tld", "domain"}[dm]
+	return [...]string{"dns", "tld", "domain", "subdomain", "full"}[dm]
 }
 
 type DiscoveryType uint8

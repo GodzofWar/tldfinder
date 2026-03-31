@@ -38,6 +38,7 @@ type Options struct {
 	NoColor            bool                 // NoColor disables the colored output
 	JSON               bool                 // JSON specifies whether to use json for output format or text file
 	HostIP             bool                 // HostIP specifies whether to write domains in host:ip format
+	IncludeASN         bool                 // IncludeASN specifies whether to include ASN info in output
 	Silent             bool                 // Silent suppresses any extra text and only writes domains to screen
 	ListSources        bool                 // ListSources specifies whether to list all available sources
 	RemoveWildcard     bool                 // RemoveWildcard specifies whether to remove potential wildcard or dead domains from the results.
@@ -93,10 +94,12 @@ func ParseOptions() *Options {
 	flagSet.CreateGroup("source", "Source",
 		flagSet.StringSliceVarP(&options.Sources, "sources", "s", nil, "specific sources to use for discovery (-s censys,dnsrepo). Use -ls to display all available sources.", goflags.NormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeSources, "exclude-sources", "es", nil, "sources to exclude from enumeration (-es censys,dnsrepo)", goflags.NormalizedStringSliceOptions),
-		flagSet.EnumVarP(&discoveryMode, "discovery-mode", "dm", goflags.EnumVariable(source.DNSMode), "discovery mode (dns,tld,domain)", goflags.AllowdTypes{
-			source.DNSMode.String():    goflags.EnumVariable(source.DNSMode),
-			source.TLDMode.String():    goflags.EnumVariable(source.TLDMode),
-			source.DomainMode.String(): goflags.EnumVariable(source.DomainMode),
+		flagSet.EnumVarP(&discoveryMode, "discovery-mode", "dm", goflags.EnumVariable(source.DNSMode), "discovery mode (dns,tld,domain,subdomain,full)", goflags.AllowdTypes{
+			source.DNSMode.String():       goflags.EnumVariable(source.DNSMode),
+			source.TLDMode.String():       goflags.EnumVariable(source.TLDMode),
+			source.DomainMode.String():    goflags.EnumVariable(source.DomainMode),
+			source.SubdomainMode.String(): goflags.EnumVariable(source.SubdomainMode),
+			source.FullMode.String():      goflags.EnumVariable(source.FullMode),
 		}),
 		flagSet.BoolVar(&options.All, "all", false, "use all sources for enumeration (slow)"),
 	)
@@ -123,6 +126,7 @@ func ParseOptions() *Options {
 		flagSet.StringVarP(&options.OutputDirectory, "output-dir", "oD", "", "directory to write output (-dL only)"),
 		flagSet.BoolVarP(&options.CaptureSources, "collect-sources", "cs", false, "include all sources in the output (-json only)"),
 		flagSet.BoolVarP(&options.HostIP, "ip", "oI", false, "include host IP in output (-active only)"),
+		flagSet.BoolVarP(&options.IncludeASN, "asn", "oA", false, "include host ASN in output (-active only)"),
 	)
 
 	flagSet.CreateGroup("configuration", "Configuration",
@@ -225,6 +229,10 @@ func ParseDiscoveryMode(value string) source.DiscoveryMode {
 		return source.TLDMode
 	case source.DomainMode.String():
 		return source.DomainMode
+	case source.SubdomainMode.String():
+		return source.SubdomainMode
+	case source.FullMode.String():
+		return source.FullMode
 	}
 	return source.DNSMode
 }
@@ -280,10 +288,13 @@ func (options *Options) parseQuery(query string) string {
 			query = ""
 		}
 
-	} else if options.DiscoveryMode == source.TLDMode {
+	} else if options.DiscoveryMode == source.TLDMode || options.DiscoveryMode == source.FullMode {
 		if parsed, err := publicsuffix.Parse(query); err == nil {
 			query = parsed.SLD
 		}
+	} else if options.DiscoveryMode == source.SubdomainMode {
+		// Accept full domain as-is (e.g., example.com)
+		query = strings.TrimSpace(strings.Trim(query, "."))
 	}
 	return query
 }
