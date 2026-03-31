@@ -42,6 +42,9 @@ func (options *Options) validateOptions() error {
 	if options.IncludeASN && !options.RemoveWildcard {
 		return errors.New("asn flag must be used with RemoveWildcard option")
 	}
+	if options.IncludeCert && !options.RemoveWildcard {
+		return errors.New("cert flag must be used with RemoveWildcard option")
+	}
 
 	if options.Match != nil {
 		options.matchRegexes = make([]*regexp.Regexp, len(options.Match))

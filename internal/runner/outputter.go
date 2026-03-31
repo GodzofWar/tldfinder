@@ -25,12 +25,13 @@ type jsonSourceResult struct {
 }
 
 type jsonSourceIPResult struct {
-	Host   string `json:"host"`
-	IP     string `json:"ip"`
-	ASN    string `json:"asn,omitempty"`
-	Org    string `json:"org,omitempty"`
-	Input  string `json:"input"`
-	Source string `json:"source"`
+	Host        string           `json:"host"`
+	IP          string           `json:"ip"`
+	ASN         string           `json:"asn,omitempty"`
+	Org         string           `json:"org,omitempty"`
+	Cert        *resolve.CertInfo `json:"cert,omitempty"`
+	Input       string           `json:"input"`
+	Source      string           `json:"source"`
 }
 
 type jsonSourcesResult struct {
@@ -101,6 +102,16 @@ func writePlainHostIP(_ string, results map[string]resolve.Result, writer io.Wri
 			sb.WriteString(",")
 			sb.WriteString(result.Org)
 		}
+		if result.Cert != nil {
+			sb.WriteString(",")
+			sb.WriteString(result.Cert.SubjectCN)
+			sb.WriteString(",")
+			sb.WriteString(result.Cert.Fingerprint)
+			sb.WriteString(",")
+			sb.WriteString(result.Cert.Issuer)
+			sb.WriteString(",")
+			sb.WriteString(result.Cert.NotAfter)
+		}
 		sb.WriteString(",")
 		sb.WriteString(result.Source)
 		sb.WriteString("\n")
@@ -125,6 +136,7 @@ func writeJSONHostIP(input string, results map[string]resolve.Result, writer io.
 		data.IP = result.IP
 		data.ASN = result.ASN
 		data.Org = result.Org
+		data.Cert = result.Cert
 		data.Input = input
 		data.Source = result.Source
 

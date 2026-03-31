@@ -39,6 +39,7 @@ type Options struct {
 	JSON               bool                 // JSON specifies whether to use json for output format or text file
 	HostIP             bool                 // HostIP specifies whether to write domains in host:ip format
 	IncludeASN         bool                 // IncludeASN specifies whether to include ASN info in output
+	IncludeCert        bool                 // IncludeCert specifies whether to include TLS cert info in output
 	Silent             bool                 // Silent suppresses any extra text and only writes domains to screen
 	ListSources        bool                 // ListSources specifies whether to list all available sources
 	RemoveWildcard     bool                 // RemoveWildcard specifies whether to remove potential wildcard or dead domains from the results.
@@ -127,6 +128,7 @@ func ParseOptions() *Options {
 		flagSet.BoolVarP(&options.CaptureSources, "collect-sources", "cs", false, "include all sources in the output (-json only)"),
 		flagSet.BoolVarP(&options.HostIP, "ip", "oI", false, "include host IP in output (-active only)"),
 		flagSet.BoolVarP(&options.IncludeASN, "asn", "oA", false, "include host ASN in output (-active only)"),
+		flagSet.BoolVarP(&options.IncludeCert, "cert", "oC", false, "include TLS certificate info in output (-active only)"),
 	)
 
 	flagSet.CreateGroup("configuration", "Configuration",

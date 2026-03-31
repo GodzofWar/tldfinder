@@ -43,7 +43,12 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 	// If yes, create the resolution pool and get the wildcards for the current domain
 	var resolutionPool *resolve.ResolutionPool
 	if r.options.RemoveWildcard {
-		resolutionPool = r.resolverClient.NewResolutionPool(r.options.Threads, r.options.RemoveWildcard, r.options.IncludeASN)
+		resolutionPool = r.resolverClient.NewResolutionPool(resolve.ResolutionPoolOptions{
+			Workers:        r.options.Threads,
+			RemoveWildcard: r.options.RemoveWildcard,
+			IncludeASN:     r.options.IncludeASN,
+			IncludeCert:    r.options.IncludeCert,
+		})
 		err := resolutionPool.InitWildcards(query)
 		if err != nil {
 			// Log the error but don't quit.

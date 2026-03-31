@@ -1,10 +1,14 @@
 package resolve
 
 import (
+	"crypto/sha256"
+	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/rs/xid"
@@ -13,6 +17,16 @@ import (
 const (
 	maxWildcardChecks = 3
 )
+
+// CertInfo holds extracted TLS certificate information
+type CertInfo struct {
+	SubjectCN   string   `json:"subject_cn,omitempty"`
+	Issuer      string   `json:"issuer,omitempty"`
+	SANs        []string `json:"sans,omitempty"`
+	Fingerprint string   `json:"fingerprint,omitempty"`
+	NotBefore   string   `json:"not_before,omitempty"`
+	NotAfter    string   `json:"not_after,omitempty"`
+}
 
 // ResolutionPool is a pool of resolvers created for resolving domains
 // for a given host.
@@ -23,6 +37,7 @@ type ResolutionPool struct {
 	wg             *sync.WaitGroup
 	removeWildcard bool
 	includeASN     bool
+	includeCert    bool
 
 	wildcardIPs map[string]struct{}
 }
@@ -41,6 +56,7 @@ type Result struct {
 	IP     string
 	ASN    string
 	Org    string
+	Cert   *CertInfo
 	Error  error
 	Source string
 }
@@ -54,20 +70,29 @@ const (
 	Error
 )
 
+// ResolutionPoolOptions configures the resolution pool
+type ResolutionPoolOptions struct {
+	Workers        int
+	RemoveWildcard bool
+	IncludeASN     bool
+	IncludeCert    bool
+}
+
 // NewResolutionPool creates a pool of resolvers for resolving domain
-func (r *Resolver) NewResolutionPool(workers int, removeWildcard bool, includeASN bool) *ResolutionPool {
+func (r *Resolver) NewResolutionPool(opts ResolutionPoolOptions) *ResolutionPool {
 	resolutionPool := &ResolutionPool{
 		Resolver:       r,
 		Tasks:          make(chan HostEntry),
 		Results:        make(chan Result),
 		wg:             &sync.WaitGroup{},
-		removeWildcard: removeWildcard,
-		includeASN:     includeASN,
+		removeWildcard: opts.RemoveWildcard,
+		includeASN:     opts.IncludeASN,
+		includeCert:    opts.IncludeCert,
 		wildcardIPs:    make(map[string]struct{}),
 	}
 
 	go func() {
-		for i := 0; i < workers; i++ {
+		for i := 0; i < opts.Workers; i++ {
 			resolutionPool.wg.Add(1)
 			go resolutionPool.resolveWorker()
 		}
@@ -126,6 +151,9 @@ func (r *ResolutionPool) resolveWorker() {
 			result := Result{Type: Subdomain, Host: task.Host, IP: hosts[0], Source: task.Source}
 			if r.includeASN {
 				result.ASN, result.Org = lookupASN(hosts[0])
+			}
+			if r.includeCert {
+				result.Cert = grabCert(task.Host, hosts[0])
 			}
 			r.Results <- result
 		}
@@ -190,4 +218,47 @@ func lookupASN(ip string) (asn string, org string) {
 	}
 
 	return "AS" + asn, org
+}
+
+// grabCert connects to host:443 via TLS and extracts certificate information.
+func grabCert(hostname string, ip string) *CertInfo {
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	conn, err := tls.DialWithDialer(dialer, "tcp", ip+":443", &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         hostname,
+	})
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+
+	certs := conn.ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return nil
+	}
+
+	cert := certs[0]
+	fingerprint := sha256.Sum256(cert.Raw)
+
+	info := &CertInfo{
+		SubjectCN:   cert.Subject.CommonName,
+		Fingerprint: hex.EncodeToString(fingerprint[:]),
+		NotBefore:   cert.NotBefore.UTC().Format(time.RFC3339),
+		NotAfter:    cert.NotAfter.UTC().Format(time.RFC3339),
+	}
+
+	if len(cert.Issuer.Organization) > 0 {
+		info.Issuer = cert.Issuer.Organization[0]
+		if cert.Issuer.CommonName != "" {
+			info.Issuer = cert.Issuer.CommonName
+		}
+	} else {
+		info.Issuer = cert.Issuer.CommonName
+	}
+
+	if len(cert.DNSNames) > 0 {
+		info.SANs = cert.DNSNames
+	}
+
+	return info
 }
