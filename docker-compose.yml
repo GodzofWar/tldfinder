@@ -10,14 +10,14 @@ services:
       # Output directory for results
       - ./output:/output
     # Examples:
-    #   TLD discovery with IP + ASN + certs:
-    #   docker compose run --rm tldfinder -d google -dm tld -nW -oI -oA -oC -rL /resolvers.txt -o /output/google-tlds.txt
+    #   TLD discovery with full enrichment:
+    #   docker compose run --rm tldfinder -d google -dm tld -nW -oI -oA -oC -oW -rL /resolvers.txt -o /output/google-tlds.txt
     #
-    #   Subdomain brute-force with IP + ASN + certs:
-    #   docker compose run --rm tldfinder -d google.com -dm subdomain -nW -oI -oA -oC -rL /resolvers.txt -o /output/google-subs.txt
+    #   Subdomain brute-force with full enrichment:
+    #   docker compose run --rm tldfinder -d google.com -dm subdomain -nW -oI -oA -oC -oW -rL /resolvers.txt -o /output/google-subs.txt
     #
     #   Full pipeline (TLD discovery → subdomain brute-force on each):
-    #   docker compose run --rm tldfinder -d tesla -dm full -nW -oI -oA -oC -rL /resolvers.txt -o /output/tesla-full.txt
+    #   docker compose run --rm tldfinder -d tesla -dm full -nW -oI -oA -oC -oW -rL /resolvers.txt -o /output/tesla-full.txt
     #
     #   JSON output with full enrichment:
-    #   docker compose run --rm tldfinder -d amazon -dm tld -nW -oI -oA -oC -rL /resolvers.txt -oJ -o /output/amazon.json
+    #   docker compose run --rm tldfinder -d amazon -dm tld -nW -oI -oA -oC -oW -rL /resolvers.txt -oJ -o /output/amazon.json

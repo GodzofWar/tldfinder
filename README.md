@@ -21,23 +21,32 @@ TLDFinder
   <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 
-A streamlined tool for discovering private TLDs for security research.
+A streamlined tool for discovering private TLDs, enumerating subdomains, and enriching results with IP, ASN, TLS certificate, and WHOIS data for security research.
 
 # Features
 
 ![image](https://github.com/user-attachments/assets/f9c96de5-9a14-4861-a85a-21df8c848e76)
 
- - TLD based DNS lookups (Passive)
- - TLD based DNS lookups (Active)
+ - **5 discovery modes**: DNS (private TLD), TLD brute-force, domain, subdomain brute-force, and full pipeline
+ - **Enrichment**: IP resolution, ASN lookup, TLS certificate extraction, WHOIS registration data
+ - **No API keys required** for core functionality (crtsh, dnsx, wayback, subbrute sources)
+ - **Full pipeline mode**: automatically chains TLD discovery → subdomain brute-force
  - STD **IN/OUT** and **TXT/JSON** output
-
+ - Docker Compose support with bundled resolvers
 
 ## Installation
 
-tldfinder requires **Go 1.21** to install successfully. To install, just run the below command or download pre-compiled binary from [release page](https://github.com/projectdiscovery/tldfinder/releases).
+tldfinder requires **Go 1.24** to install successfully. To install, just run the below command or download pre-compiled binary from [release page](https://github.com/projectdiscovery/tldfinder/releases).
 
 ```console
 go install github.com/projectdiscovery/tldfinder/cmd/tldfinder@latest
+```
+
+### Docker
+
+```console
+docker compose build
+docker compose run --rm tldfinder -d google.com -dm subdomain -nW -oI -oA -oC -oW -rL /resolvers.txt -o /output/results.txt
 ```
 
 ## Usage
@@ -61,7 +70,7 @@ INPUT:
 SOURCE:
    -s, -sources string[]           specific sources to use for discovery (-s censys,dnsrepo). Use -ls to display all available sources.
    -es, -exclude-sources string[]  sources to exclude from enumeration (-es censys,dnsrepo)
-   -dm, -discovery-mode value      discovery mode (dns,tld,domain) (default dns)
+   -dm, -discovery-mode value      discovery mode (dns,tld,domain,subdomain,full) (default dns)
    -all                            use all sources for enumeration (slow)
 
 FILTER:
@@ -83,6 +92,9 @@ OUTPUT:
    -oD, -output-dir string  directory to write output (-dL only)
    -cs, -collect-sources    include all sources in the output (-json only)
    -oI, -ip                 include host IP in output (-active only)
+   -oA, -asn                include host ASN in output (-active only)
+   -oC, -cert               include TLS certificate info in output (-active only)
+   -oW, -whois              include WHOIS registration data in output (-active only)
 
 CONFIGURATION:
    -config string                flag config file (default "/Users/user/Library/Application Support/tldfinder/config.yaml")
@@ -106,47 +118,77 @@ OPTIMIZATION:
    -max-time int  minutes to wait for enumeration results (default 10)
 ```
 
+## Discovery Modes
+
+### DNS Mode (default)
+Discover subdomains of private TLDs via passive sources:
+```console
+tldfinder -d google
+```
+
+### TLD Mode
+Find which TLDs a domain exists on via DNS brute-force:
+```console
+tldfinder -d tesla -dm tld -nW -oI -oA
+```
+
+### Subdomain Mode
+Brute-force subdomains of any domain using an embedded wordlist:
+```console
+tldfinder -d google.com -dm subdomain -nW -oI -oA -oC -oW
+```
+
+### Full Pipeline Mode
+Chains TLD discovery → subdomain brute-force on every found TLD domain:
+```console
+tldfinder -d tesla -dm full -nW -oI -oA -oC -oW -rL resolvers.txt -o results.txt
+```
+
 ## Running tldfinder
 
-tldfinder is designed for security research purposes to discover private TLDs. It accepts a domain or private TLD as input.
+tldfinder is designed for security research. It supports multiple input types depending on the discovery mode:
 
-- TLD Input: example (private TLD)
-- Domain Input: example.google (private TLD auto-extracted)
+| Mode | Input | Example |
+|------|-------|---------|
+| dns | Private TLD or domain with private TLD | `google`, `example.google` |
+| tld | Domain name (SLD extracted) | `tesla`, `tesla.com` |
+| subdomain | Full domain | `google.com`, `tesla.ai` |
+| full | Domain name (SLD extracted) | `tesla` |
+| domain | Domain | `paypal.com` |
 
 Use `-domain` or `-d` to specify input, and provide multiple values as comma-separated input.
 
-> [!NOTE]
-> Only private TLDs are accepted, as tldfinder is meant for private TLD discovery.
+### Enrichment
 
-**Example run**:
+When using active mode (`-nW`), results can be enriched with:
 
 ```console
-$ tldfinder -d google
+# IP + ASN + TLS cert + WHOIS, all at once
+tldfinder -d google.com -dm subdomain -nW -oI -oA -oC -oW -rL resolvers.txt
+```
 
- ________   ___  _____         __       
-/_  __/ /  / _ \/ __(_)__  ___/ /__ ____
- / / / /__/ // / _// / _ \/ _  / -_) __/
-/_/ /____/____/_/ /_/_//_/\_,_/\__/_/ 
+**Plain text output** (comma-separated):
+```
+host,ip,asn,org,subject_cn,fingerprint,issuer,not_after,registrar,created,expiry,registrant,source
+```
 
-      projectdiscovery.io
+**JSON output** (`-oJ`) includes full nested objects for cert (with SANs array), WHOIS (with nameservers, domain status), etc.
 
-[INF] Current tldfinder version v0.0.2 (latest)
-[INF] Enumerating sub(domains) for "google" TLD
-ice.ext.google
-test.postini.corp.google
-m.gutsdev.corp.google
-orkut-impersonation.corp.google
-orkut-qa.corp.google
-sites-googlegroups-qa07.corp.google
-partners.cloudskillsboost.google
-support.registry-sandbox.google
-www.google
-docs.google
-plus.google
-cache7.c.docs.google
-smtp.google
+### Example: Full Pipeline with All Enrichment
+
+```console
+$ tldfinder -d tesla -dm full -nW -oI -oA -oC -oW -rL resolvers.txt -oJ -o tesla-full.json
+
+[INF] Phase 1: Enumerating TLDs for "tesla"
+[INF] Found TLD: tesla.com
+[INF] Found TLD: tesla.app
+[INF] Found TLD: tesla.ai
 ...
-[INF] Found 215 domains for google in 7 seconds 968 milliseconds
+[INF] Found 425 TLD domains for tesla in 1 minute 30 seconds
+[INF] Phase 2: Enumerating subdomains for 425 discovered TLD domains
+[INF] Enumerating subdomains for "tesla.com"
+www.tesla.com,23.9.66.49,AS20940,AKAMAI-ASN1 - Akamai...,*.tesla.com,abc123...,DigiCert,2026-...,CSC Corporate Domains,2003-...,2026-...,Tesla Inc.,subbrute
+...
 ```
 
 ## Reference
