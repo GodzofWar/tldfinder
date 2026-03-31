@@ -38,6 +38,7 @@ type ResolutionPool struct {
 	removeWildcard bool
 	includeASN     bool
 	includeCert    bool
+	includeWhois   bool
 
 	wildcardIPs map[string]struct{}
 }
@@ -57,6 +58,7 @@ type Result struct {
 	ASN    string
 	Org    string
 	Cert   *CertInfo
+	Whois  *WhoisInfo
 	Error  error
 	Source string
 }
@@ -76,6 +78,7 @@ type ResolutionPoolOptions struct {
 	RemoveWildcard bool
 	IncludeASN     bool
 	IncludeCert    bool
+	IncludeWhois   bool
 }
 
 // NewResolutionPool creates a pool of resolvers for resolving domain
@@ -88,6 +91,7 @@ func (r *Resolver) NewResolutionPool(opts ResolutionPoolOptions) *ResolutionPool
 		removeWildcard: opts.RemoveWildcard,
 		includeASN:     opts.IncludeASN,
 		includeCert:    opts.IncludeCert,
+		includeWhois:   opts.IncludeWhois,
 		wildcardIPs:    make(map[string]struct{}),
 	}
 
@@ -154,6 +158,9 @@ func (r *ResolutionPool) resolveWorker() {
 			}
 			if r.includeCert {
 				result.Cert = grabCert(task.Host, hosts[0])
+			}
+			if r.includeWhois {
+				result.Whois = lookupWhois(task.Host)
 			}
 			r.Results <- result
 		}

@@ -40,6 +40,7 @@ type Options struct {
 	HostIP             bool                 // HostIP specifies whether to write domains in host:ip format
 	IncludeASN         bool                 // IncludeASN specifies whether to include ASN info in output
 	IncludeCert        bool                 // IncludeCert specifies whether to include TLS cert info in output
+	IncludeWhois       bool                 // IncludeWhois specifies whether to include WHOIS data in output
 	Silent             bool                 // Silent suppresses any extra text and only writes domains to screen
 	ListSources        bool                 // ListSources specifies whether to list all available sources
 	RemoveWildcard     bool                 // RemoveWildcard specifies whether to remove potential wildcard or dead domains from the results.
@@ -129,6 +130,7 @@ func ParseOptions() *Options {
 		flagSet.BoolVarP(&options.HostIP, "ip", "oI", false, "include host IP in output (-active only)"),
 		flagSet.BoolVarP(&options.IncludeASN, "asn", "oA", false, "include host ASN in output (-active only)"),
 		flagSet.BoolVarP(&options.IncludeCert, "cert", "oC", false, "include TLS certificate info in output (-active only)"),
+		flagSet.BoolVarP(&options.IncludeWhois, "whois", "oW", false, "include WHOIS registration data in output (-active only)"),
 	)
 
 	flagSet.CreateGroup("configuration", "Configuration",

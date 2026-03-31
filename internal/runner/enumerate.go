@@ -48,6 +48,7 @@ func (r *Runner) EnumerateSingleQueryWithCtx(ctx context.Context, query string, 
 			RemoveWildcard: r.options.RemoveWildcard,
 			IncludeASN:     r.options.IncludeASN,
 			IncludeCert:    r.options.IncludeCert,
+			IncludeWhois:   r.options.IncludeWhois,
 		})
 		err := resolutionPool.InitWildcards(query)
 		if err != nil {

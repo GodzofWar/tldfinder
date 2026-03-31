@@ -45,6 +45,9 @@ func (options *Options) validateOptions() error {
 	if options.IncludeCert && !options.RemoveWildcard {
 		return errors.New("cert flag must be used with RemoveWildcard option")
 	}
+	if options.IncludeWhois && !options.RemoveWildcard {
+		return errors.New("whois flag must be used with RemoveWildcard option")
+	}
 
 	if options.Match != nil {
 		options.matchRegexes = make([]*regexp.Regexp, len(options.Match))
